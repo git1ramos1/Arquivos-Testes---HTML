@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador V11</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    margin:8px;
+    background:#f4f6f9;
+}
+
+h1{
+    font-size:16px;
+    text-align:center;
+}
+
+.box{
+    background:white;
+    padding:8px;
+    border-radius:8px;
+    margin-bottom:10px;
+}
+
+input{
+    width:100%;
+    padding:6px;
+    margin:4px 0;
+    font-size:13px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    box-sizing:border-box;
+}
+
+.insumos-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+}
+
+.insumo-item{
+    background:#fafafa;
+    padding:5px;
+    border-radius:6px;
+}
+
+.resultado{
+    background:#eef2f7;
+    padding:6px;
+    border-radius:6px;
+    font-size:12px;
+}
+
+button{
+    width:100%;
+    padding:8px;
+    margin-top:8px;
+    font-size:14px;
+    border:none;
+    border-radius:6px;
+    background:#2c3e50;
+    color:white;
+}
+
+canvas{
+    margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Simulador V11</h1>
+
+<div class="box">
+
+<label>Preço</label>
+<input type="text" inputmode="decimal" id="preco">
+
+<label>Comissão</label>
+<input type="text" inputmode="decimal" id="comissao">
+
+<label>Gasolina</label>
+<input type="text" inputmode="decimal" id="gasolina">
+
+<label>Despesas</label>
+<input type="text" inputmode="decimal" id="despesas">
+
+<label>Cartão (%)</label>
+<input type="text" inputmode="decimal" id="cartao">
+
+<div class="resultado">
+Custo: <span id="custototal">0.00</span><br>
+Lucro: <span id="lucro">0.00</span><br>
+Margem: <span id="margem">0%</span>
+</div>
+
+<button onclick="gerarPDF()">📄 Salvar Resumo em PDF</button>
+
+<canvas id="grafico"></canvas>
+
+</div>
+
+<div class="box">
+<h3>Insumos</h3>
+<div class="insumos-grid" id="insumos"></div>
+Total: <strong id="totalinsumos">0.00</strong>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+const container = document.getElementById("insumos");
+
+for(let i=1;i<=8;i++){
+    let div = document.createElement("div");
+    div.className="insumo-item";
+    div.innerHTML=`
+        <input type="text" placeholder="Insumo">
+        <input type="text" inputmode="decimal" placeholder="Valor" class="valor">
+    `;
+    container.appendChild(div);
+}
+
+function num(v){
+    return parseFloat((v || "").replace(",", ".")) || 0;
+}
+
+let ctx = document.getElementById('grafico').getContext('2d');
+
+let grafico = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Custo','Lucro','Margem %'],
+        datasets: [{
+            label: 'Resultado',
+            data: [0,0,0]
+        }]
+    },
+    options: {
+        responsive:true,
+        plugins:{
+            legend:{display:false}
+        }
+    }
+});
+
+function calcular(){
+
+let preco = num(document.getElementById("preco").value);
+let comissao = num(document.getElementById("comissao").value);
+let gasolina = num(document.getElementById("gasolina").value);
+let despesas = num(document.getElementById("despesas").value);
+let cartao = num(document.getElementById("cartao").value);
+
+let totalInsumos=0;
+document.querySelectorAll(".valor").forEach(i=>{
+    totalInsumos+=num(i.value);
+});
+
+document.getElementById("totalinsumos").innerText=totalInsumos.toFixed(2);
+
+let taxa=preco*(cartao/100);
+let custo=totalInsumos+comissao+gasolina+despesas+taxa;
+let lucro=preco-custo;
+let margem=preco>0?(lucro/preco)*100:0;
+
+document.getElementById("custototal").innerText=custo.toFixed(2);
+document.getElementById("lucro").innerText=lucro.toFixed(2);
+document.getElementById("margem").innerText=margem.toFixed(2)+"%";
+
+grafico.data.datasets[0].data=[custo,lucro,margem];
+grafico.update();
+}
+
+document.addEventListener("input", calcular);
+
+window.gerarPDF = function(){
+
+let resumo = `
+Resumo da Simulação
+
+Preço: ${preco.value}
+Custo: ${custototal.innerText}
+Lucro: ${lucro.innerText}
+Margem: ${margem.innerText}
+`;
+
+let novaJanela = window.open('', '', 'width=600,height=600');
+novaJanela.document.write('<pre>'+resumo+'</pre>');
+novaJanela.document.close();
+novaJanela.print();
+}
+
+});
+</script>
+
+</body>
+</html>
